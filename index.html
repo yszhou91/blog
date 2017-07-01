@@ -246,6 +246,164 @@
   
 
   <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="https://yszhou91.github.io/blog/blog/2017/07/01/idea 远程调试记录/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="ys zhou">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="http://oryb65w1t.bkt.clouddn.com/git-blog-avatar.jpeg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="let's celebrate">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/blog/2017/07/01/idea 远程调试记录/" itemprop="url">未命名</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-07-01T11:07:48+08:00">
+                2017-07-01
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+
+          
+            
+              <span class="post-comments-count">
+              <span class="post-meta-divider">|</span>
+              <span class="post-meta-item-icon">
+                <i class="fa fa-comment-o"></i>
+              </span>
+              
+                <a href="/blog/2017/07/01/idea 远程调试记录/#SOHUCS" itemprop="discussionUrl">
+                  <span id="url::https://yszhou91.github.io/blog/2017/07/01/idea 远程调试记录/" class="cy_cmt_count" data-xid="2017/07/01/idea 远程调试记录/" itemprop="commentsCount" ></span>
+                </a>
+              
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <hr>
+<h2 id="idea-远程调试记录"><a href="#idea-远程调试记录" class="headerlink" title="idea 远程调试记录"></a>idea 远程调试记录</h2><h2 id="场景："><a href="#场景：" class="headerlink" title="场景："></a>场景：</h2><p>本地windows，开发机centos，涉及到的数据库为开发机内网ip，开发机端口有限制，不能在idea中直连，搜到的教程都是在idea中直接填写开发机ip和端口，所以都没有办法直接使用。</p>
+<h2 id="配置："><a href="#配置：" class="headerlink" title="配置："></a>配置：</h2><h3 id="开发机："><a href="#开发机：" class="headerlink" title="开发机："></a>开发机：</h3><p><strong>tomcat：</strong></p>
+<p> 配置 $tomcat_home/conf/server.xml ：配置tomcat启动端口，如8080。</p>
+<p>配置$tomcat_home/bin/catalina.sh ：在</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line"># OS specific support.  $var _must_ be set to either true or false.</div></pre></td></tr></table></figure>
+<p>上边加上</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div></pre></td><td class="code"><pre><div class="line">JAVA_OPTS=&apos;-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=5005&apos;</div></pre></td></tr></table></figure>
+<p>目的是让tomcat启动时可以被本地debug attach上来。</p>
+<p><strong>nginx：</strong></p>
+<p>配置端口转发：（由于在本地无法直接访问8080端口，使用nginx做反向代理，在本地请求api.xxx.com转发到tomcat对应端口，需要在windows上配置host，这个稍后说。）</p>
+<figure class="highlight plain"><table><tr><td class="gutter"><pre><div class="line">1</div><div class="line">2</div><div class="line">3</div><div class="line">4</div><div class="line">5</div><div class="line">6</div><div class="line">7</div><div class="line">8</div><div class="line">9</div><div class="line">10</div><div class="line">11</div></pre></td><td class="code"><pre><div class="line">server &#123;</div><div class="line"></div><div class="line">    listen 80;</div><div class="line">    server_name api.xxx.com;</div><div class="line">    location / &#123;</div><div class="line">        proxy_pass http://localhost:8080;</div><div class="line">        proxy_set_header Host api.xxx.com;</div><div class="line">        proxy_set_header X-Forwarded-For  $remote_addr;</div><div class="line">    &#125;</div><div class="line">    access_log /data/api.log;</div><div class="line">&#125;</div></pre></td></tr></table></figure>
+<p>注意这里的端口是tomcat的项目监听端口，8080</p>
+<p><strong>启动服务</strong></p>
+<p>启动tomcat： $tomcat_home/bin/startup.sh </p>
+<p>查看 $tomcat_home/logs/catalina.out 日志确认启动成功。</p>
+<p>重启nginx  nginx -s reload</p>
+<h3 id="本地机器（windows）："><a href="#本地机器（windows）：" class="headerlink" title="本地机器（windows）："></a>本地机器（windows）：</h3><p>这块的配置在网上没找到比较好的教程，写的都是直接访问开发机的端口，这里采用xshell隧道把开发机的端口映射到本地机器然后通过idea代理访问本地端口来实现调试的。</p>
+<p><strong>xshell配置：</strong></p>
+<p>打开属性 —-&gt; 连接 —-&gt; 隧道 —-&gt; 添加</p>
+<p>类型（方向） ： Local(Outgoing)</p>
+<p>源主机： localhost</p>
+<p>侦听端口：随便选一个本地没有被占用的端口（如46666）</p>
+<p>目标主机：开发机公网ip</p>
+<p>目标端口：上边配置的5005端口</p>
+<p>然后开启一个xshell页面，把这个页面的查看 —&gt; 隧道窗格选项勾选出来，可以看到窗口下边转移规则状态为打开证明已经开启    。</p>
+<p><strong>idea配置：</strong></p>
+<p> 这一步就是很多博客都写的了，不同的是配置host为127.0.0.1 端口为上边设置的46666。</p>
+<p>配置方法：</p>
+<p>打开run /debug configurations 窗口，点击加号，选remote </p>
+<p>填写： host :127.0.0.1  port:46666</p>
+<p><strong>开始调试：</strong></p>
+<p>到这一步几乎所有博客也是说“开始尽情调试吧”，还加上了一个断点截图，对于刚开始接触开发的同学来说还是有点懵，加了断点咋就执行了。</p>
+<p>这块需要把项目打成war包发布到开发机上，在本地项目和远程项目一致时，本地打了断点，浏览器访问远程的项目到这一步就会停在这了，这才可以尽情调试。</p>
+<p>步骤： mvn clean package  —&gt; 发布到开发机 —-&gt; 重启tomcat —-&gt;打断点 —–&gt; 点debug </p>
+<p>连接成功后，访问对应的接口就可以了。</p>
+
+          
+        
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+    <div>
+      
+    </div>
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
     <link itemprop="mainEntityOfPage" href="https://yszhou91.github.io/blog/blog/2017/06/22/start/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -409,7 +567,7 @@
           
             <div class="site-state-item site-state-posts">
               <a href="/blog/archives/">
-                <span class="site-state-item-count">1</span>
+                <span class="site-state-item-count">2</span>
                 <span class="site-state-item-name">日志</span>
               </a>
             </div>
